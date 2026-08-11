@@ -1,29 +1,45 @@
-import requests, os, time
+import requests
+import os
+from datetime import datetime
 
+# GitHub Secrets se data lega
 TOKEN = os.getenv('8913665698:AAHR-Eio4DE3qWqKQ8SpnJiTrpnU_ujs7Ek')
 CHAT_ID = os.getenv('8193076289')
 
 def send_tg(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+    try:
+        response = requests.post(url, json={"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+        print(f"Telegram Response: {response.status_code}")
+    except Exception as e:
+        print(f"Error sending to Telegram: {e}")
 
-def get_data():
-    # Bybit API use kar rahe hain kyunki ye block nahi hota
-    price = float(requests.get("https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT").json()['result']['list'][0]['lastPrice'])
-    klines = requests.get("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=48").json()['result']['list']
-    high = max([float(k[2]) for k in klines])
-    low = min([float(k[3]) for k in klines])
-    
-    # Simple Volume Delta logic
-    vol = float(requests.get("https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT").json()['result']['list'][0]['turnover24h'])
-    return price, high, low, vol
+def get_price():
+    try:
+        # CoinGecko API (GitHub servers ke liye best)
+        res = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
+        data = res.json()
+        price = data['bitcoin']['usd']
+        change = data['bitcoin']['usd_24h_change']
+        return price, change
+    except Exception as e:
+        print(f"Error fetching price: {e}")
+        return None, None
 
-price, high, low, vol = get_data()
+# --- RUN TESTING ---
+price, change = get_price()
+now = datetime.now().strftime('%H:%M:%S')
 
-# LOGIC
-if price <= low:
-    send_tg(f"🚀 *BEAR TRAP (LONG)*\nPrice: {price}\nSL: {price-150}\nTP: {price+850}")
-elif price >= high:
-    send_tg(f"🔥 *BULL TRAP (SHORT)*\nPrice: {price}\nSL: {price+150}\nTP: {price-850}")
+if price:
+    emoji = "🟢" if change > 0 else "🔴"
+    message = (
+        f"🛰️ *GITHUB BOT LIVE TEST*\n\n"
+        f"💰 BTC Price: `${price}`\n"
+        f"{emoji} 24h Change: `{change:.2f}%`\n"
+        f"⏰ Server Time: `{now}`\n\n"
+        f"✅ Microsoft Server sahi chal raha hai!"
+    )
+    send_tg(message)
+    print(f"Test Successful: {price}")
 else:
-    print(f"Scanning... Price: {price} | No Signal.")
+    print("Failed to get price.")
