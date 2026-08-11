@@ -1,0 +1,22 @@
+name: 24/7 BTC Bot
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Har 5 minute mein Microsoft khud ise chalayega
+  workflow_dispatch:      # Manual button bhi milega chalane ka
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Run Bot
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          pip install requests
+          python bot.py
